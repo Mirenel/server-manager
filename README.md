@@ -19,6 +19,11 @@ A real-time process and service manager for monitoring and controlling game serv
 - **Dark mode**: Light/dark theme toggle
 - **In-app config**: Edit process configuration without restarting
 
+## Screenshot
+
+![Server Manager UI](example.png)
+*Dark mode interface showing real-time process monitoring, metrics graphs, logs, and event timeline for AzerothCore Auth and World servers*
+
 ## Tech Stack
 
 - **Backend**: Go 1.21+ (port 8090)
