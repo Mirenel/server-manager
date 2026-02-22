@@ -177,4 +177,15 @@ Output: `frontend/dist/` — serve with any static host
 
 ## License
 
-[Add your license here]
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
+
+You are free to:
+- ✅ Use, modify, and distribute the software
+- ✅ Use it for commercial and private purposes
+- ✅ Include it in other projects
+
+You must:
+- ✓ Include a copy of the license
+- ✓ Credit the original author
+
+**Copyright (c) 2026 Mirenel**
