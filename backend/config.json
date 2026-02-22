@@ -1,0 +1,67 @@
+{
+  "processes": [
+    {
+      "id": "go-webserver",
+      "name": "Go Webserver",
+      "executable": "YOUR_GO_EXECUTABLE_PATH",
+      "args": [
+        "run",
+        "."
+      ],
+      "working_dir": "YOUR_WEBSERVER_WORKING_DIR",
+      "auto_restart": false,
+      "is_service": false,
+      "service_name": "",
+      "category": "web",
+      "shutdown_delay": 0,
+      "log_max_size_mb": 0,
+      "log_max_backups": 5,
+      "log_max_age_days": 0
+    },
+    {
+      "id": "mysql",
+      "name": "MySQL Server",
+      "executable": "",
+      "args": [],
+      "working_dir": "",
+      "auto_restart": false,
+      "is_service": true,
+      "service_name": "YOUR_MYSQL_SERVICE_NAME",
+      "category": "database",
+      "shutdown_delay": 0,
+      "log_max_size_mb": 0,
+      "log_max_backups": 5,
+      "log_max_age_days": 0
+    },
+    {
+      "id": "authserver",
+      "name": "Auth Server",
+      "executable": "YOUR_AUTHSERVER_EXECUTABLE_PATH",
+      "args": [],
+      "working_dir": "YOUR_AUTHSERVER_WORKING_DIR",
+      "auto_restart": false,
+      "is_service": false,
+      "service_name": "",
+      "category": "game",
+      "shutdown_delay": 0,
+      "log_max_size_mb": 0,
+      "log_max_backups": 5,
+      "log_max_age_days": 0
+    },
+    {
+      "id": "worldserver",
+      "name": "World Server",
+      "executable": "YOUR_WORLDSERVER_EXECUTABLE_PATH",
+      "args": [],
+      "working_dir": "YOUR_WORLDSERVER_WORKING_DIR",
+      "auto_restart": false,
+      "is_service": false,
+      "service_name": "",
+      "category": "game",
+      "shutdown_delay": 5,
+      "log_max_size_mb": 0,
+      "log_max_backups": 5,
+      "log_max_age_days": 0
+    }
+  ]
+}
