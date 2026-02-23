@@ -6,17 +6,22 @@ A real-time process and service manager for monitoring and controlling game serv
 
 ## Features
 
-- **Real-time monitoring**: CPU, memory, thread count, uptime
+- **Real-time monitoring**: CPU, memory, thread count, uptime, with live sparklines per process
+- **Header summary**: Running process count, total CPU %, and total RAM at a glance
 - **Start/Stop controls**: Executables and Windows Services
 - **Auto-restart**: Automatic process recovery on crash (configurable per-process)
+- **Restart counter**: Badge on each card tracking how many times a process has been auto-restarted
 - **Graceful shutdown**: Configurable shutdown delay with soft kill → polling → force kill, visual "STOPPING" state with countdown timer
 - **Metrics history**: CPU and memory graphs (1m–60m windows)
 - **Live logs**: Inline per-card log viewer with search/filter, and a dedicated full-screen log viewer (process tabs, auto-scroll, scroll-to-bottom)
 - **Log file metadata**: Filename, absolute path, and live file size (KB/MB) shown in both the inline toggle and the dedicated viewer
+- **Log rotation**: Configurable max file size, number of backups, and backup age limit per process
 - **Process grouping**: Organize processes by category (game, web, database, custom)
 - **Bulk operations**: Start/stop all processes at once, with grouped header controls to avoid accidental clicks
 - **Process comparison**: Side-by-side sparkline comparison view
 - **Event timeline**: Track start/stop/crash events with timestamps
+- **Crash notifications**: Toast alerts on unexpected process exit
+- **Connection status**: Live/Reconnecting indicator for the WebSocket connection
 - **Dark mode**: Light/dark theme toggle
 - **In-app config**: Edit process configuration without restarting
 
@@ -73,7 +78,10 @@ The `backend/config.json` file contains example processes based on the original 
       "is_service": false,           // true for Windows Services
       "service_name": "",            // Windows Service name (only for services)
       "category": "web",             // grouping category (optional)
-      "shutdown_delay": 5            // graceful shutdown timeout in seconds (optional)
+      "shutdown_delay": 5,           // graceful shutdown timeout in seconds (optional)
+      "log_max_size_mb": 10,         // rotate log when it exceeds this size in MB (0 = disabled)
+      "log_max_backups": 3,          // number of rotated backup files to keep (optional)
+      "log_max_age_days": 7          // delete backups older than this many days (optional)
     }
   ]
 }
@@ -138,7 +146,7 @@ Output: `frontend/dist/` — serve with any static host
 | POST | `/api/processes/start-all` | Start all processes |
 | POST | `/api/processes/stop-all` | Stop all processes |
 | PUT | `/api/processes/{id}/autorestart` | Toggle auto-restart |
-| GET | `/api/processes/{id}/logs` | Fetch process logs |
+| GET | `/api/processes/{id}/logs` | Fetch process logs (query: `?tail=N` for 1–500 lines, default 30) |
 | GET | `/api/processes/{id}/metrics` | Historical metrics (query: `?minutes=N` for 1-60 minute window) |
 | GET | `/api/config` | Fetch current configuration |
 | PUT | `/api/config` | Update configuration (with validation) |
@@ -157,9 +165,14 @@ Output: `frontend/dist/` — serve with any static host
   - `events.go` — Event timeline storage
 
 - **Frontend (`frontend/`)**: React + Vite
-  - `App.jsx` — Main app layout
-  - `components/` — React components
-  - `services/api.js` — WebSocket client
+  - `App.jsx` — Main app layout, WebSocket connection, header controls
+  - `components/ProcessCard.jsx` — Per-process card with stats, sparklines, inline logs
+  - `components/LogViewer.jsx` — Full-screen log viewer modal with process tabs
+  - `components/MetricsChart.jsx` — SVG CPU/memory history graphs
+  - `components/ConfigEditor.jsx` — In-app JSON config editor modal
+  - `components/ComparisonView.jsx` — Side-by-side process sparkline comparison
+  - `components/EventTimeline.jsx` — Collapsible start/stop/crash event log
+  - `components/Toast.jsx` — Crash notification toasts
 
 ## Important Notes
 
