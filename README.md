@@ -9,7 +9,7 @@ A real-time process and service manager for monitoring and controlling game serv
 - **Real-time monitoring**: CPU, memory, thread count, uptime
 - **Start/Stop controls**: Executables and Windows Services
 - **Auto-restart**: Automatic process recovery on crash (configurable per-process)
-- **Graceful shutdown**: Configurable shutdown delay with soft kill → polling → force kill
+- **Graceful shutdown**: Configurable shutdown delay with soft kill → polling → force kill, visual "STOPPING" state with countdown timer
 - **Metrics history**: CPU and memory graphs (1m–60m windows)
 - **Live logs**: Real-time log viewer with search/filter
 - **Process grouping**: Organize processes by category (game, web, database, custom)
@@ -165,7 +165,7 @@ Output: `frontend/dist/` — serve with any static host
 
 ### Process Management
 - **Worldserver stdin**: If monitoring WorldServer, keep stdin pipe open — closing it will cause immediate exit
-- **Graceful shutdown**: Processes support `shutdown_delay` field (seconds to wait before force-killing)
+- **Graceful shutdown**: Processes support `shutdown_delay` field (seconds to wait before force-killing). The UI shows a "STOPPING" badge with a countdown timer during graceful shutdown. Service stops (`net stop`) no longer block monitoring of other processes
 - **Config location**: `config.json` must be in the `backend/` directory (not the binary directory)
 - **Optional processes**: Add only the processes you need — unused entries can be removed
 
