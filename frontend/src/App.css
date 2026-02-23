@@ -593,7 +593,7 @@ body {
   position: fixed;
   top: 16px;
   right: 16px;
-  z-index: 100;
+  z-index: 300;
   display: flex;
   flex-direction: column;
   gap: 10px;
