@@ -11,9 +11,10 @@ A real-time process and service manager for monitoring and controlling game serv
 - **Auto-restart**: Automatic process recovery on crash (configurable per-process)
 - **Graceful shutdown**: Configurable shutdown delay with soft kill → polling → force kill, visual "STOPPING" state with countdown timer
 - **Metrics history**: CPU and memory graphs (1m–60m windows)
-- **Live logs**: Real-time log viewer with search/filter
+- **Live logs**: Inline per-card log viewer with search/filter, and a dedicated full-screen log viewer (process tabs, auto-scroll, scroll-to-bottom)
+- **Log file metadata**: Filename, absolute path, and live file size (KB/MB) shown in both the inline toggle and the dedicated viewer
 - **Process grouping**: Organize processes by category (game, web, database, custom)
-- **Bulk operations**: Start/stop all processes at once
+- **Bulk operations**: Start/stop all processes at once, with grouped header controls to avoid accidental clicks
 - **Process comparison**: Side-by-side sparkline comparison view
 - **Event timeline**: Track start/stop/crash events with timestamps
 - **Dark mode**: Light/dark theme toggle
