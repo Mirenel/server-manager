@@ -2,7 +2,7 @@
 
 A real-time process and service manager for monitoring and controlling game servers, web services, and databases on Windows.
 
-**Originally created for managing [AzerothCore](https://www.azerothcore.org/) AuthServer and WorldServer instances**, but designed to be flexible enough to monitor and control any Windows executable or service.
+**Originally created for managing [AzerothCore](https://www.azerothcore.org/) AuthServer and WorldServer instances**, but designed to be flexible enough to monitor and control any Windows executable or service. Created with Claude AI, so keep that in mind.
 
 ## Features
 
