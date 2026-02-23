@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -54,6 +55,8 @@ type ProcessStatus struct {
 	WorkingDir       string       `json:"working_dir"`
 	IsService        bool         `json:"is_service"`
 	Category         string       `json:"category"`
+	LogSizeBytes     int64        `json:"log_size_bytes"`
+	LogPath          string       `json:"log_path"`
 }
 
 type ProcessManager struct {
@@ -441,6 +444,17 @@ func (pm *ProcessManager) getStatus(mp *ManagedProcess) ProcessStatus {
 	if !mp.StoppingDeadline.IsZero() {
 		stoppingDeadline = mp.StoppingDeadline.UnixMilli()
 	}
+	var logSizeBytes int64
+	var logPath string
+	if !mp.Config.IsService {
+		p := fmt.Sprintf("./%s.log", mp.Config.ID)
+		if abs, err := filepath.Abs(p); err == nil {
+			logPath = abs
+		}
+		if info, err := os.Stat(p); err == nil {
+			logSizeBytes = info.Size()
+		}
+	}
 	return ProcessStatus{
 		ID:               mp.Config.ID,
 		Name:             mp.Config.Name,
@@ -457,5 +471,7 @@ func (pm *ProcessManager) getStatus(mp *ManagedProcess) ProcessStatus {
 		WorkingDir:       mp.Config.WorkingDir,
 		IsService:        mp.Config.IsService,
 		Category:         mp.Config.Category,
+		LogSizeBytes:     logSizeBytes,
+		LogPath:          logPath,
 	}
 }

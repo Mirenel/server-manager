@@ -11,6 +11,12 @@ function formatUptime(ms) {
   return `${sec}s`
 }
 
+function formatLogSize(bytes) {
+  if (!bytes) return null
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  return `${(bytes / 1024).toFixed(1)} KB`
+}
+
 function CpuSparkline({ history }) {
   if (history.length < 2) return null
   const svgH = 28
@@ -53,6 +59,7 @@ export default function ProcessCard({ process, onStart, onStop, onToggleAutoRest
     id, name, state, pid, cpu, memory_mb, threads,
     started_at, restart_count, stopping_deadline,
     auto_restart, executable, working_dir, is_service,
+    log_size_bytes,
   } = process
 
   const isRunning = state === 'running'
@@ -231,6 +238,10 @@ export default function ProcessCard({ process, onStart, onStop, onToggleAutoRest
           <button className="log-toggle" onClick={handleLogToggle}>
             <span className="log-caret">{logOpen ? '▾' : '▸'}</span>
             Logs
+            <span className="log-filename" title={`${id}.log`}>{id}.log</span>
+            {formatLogSize(log_size_bytes) && (
+              <span className="log-filesize">{formatLogSize(log_size_bytes)}</span>
+            )}
           </button>
           {logOpen && (
             <div className="log-content-wrapper">

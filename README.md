@@ -19,10 +19,13 @@ A real-time process and service manager for monitoring and controlling game serv
 - **Dark mode**: Light/dark theme toggle
 - **In-app config**: Edit process configuration without restarting
 
-## Screenshot
+## Screenshots
 
 ![Server Manager UI](example.png)
 *Dark mode interface showing real-time process monitoring, metrics graphs, logs, and event timeline for AzerothCore Auth and World servers*
+
+![Log Viewer](example2.png)
+*Enhanced log viewer — per-process tabs with live auto-scrolling output, file path, size, line count, and text filtering*
 
 ## Tech Stack
 

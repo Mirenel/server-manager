@@ -4,6 +4,7 @@ import Toast from './components/Toast'
 import ConfigEditor from './components/ConfigEditor'
 import ComparisonView from './components/ComparisonView'
 import EventTimeline from './components/EventTimeline'
+import LogViewer from './components/LogViewer'
 
 const WS_URL = 'ws://localhost:8090/ws'
 const RECONNECT_DELAY = 3000
@@ -16,6 +17,7 @@ export default function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') ?? 'dark')
   const [configOpen, setConfigOpen] = useState(false)
   const [compareOpen, setCompareOpen] = useState(false)
+  const [logViewerOpen, setLogViewerOpen] = useState(false)
   const wsRef = useRef(null)
   const reconnectTimer = useRef(null)
   const cpuHistoryRef = useRef({})   // { [id]: number[] } — rolling 30 CPU samples
@@ -155,25 +157,36 @@ export default function App() {
         )}
         <div className="header-right">
           <div className="header-controls">
-            <button className="header-btn" onClick={handleStartAll} title="Start all processes">
-              Start All
-            </button>
-            <button className="header-btn" onClick={handleStopAll} title="Stop all processes">
-              Stop All
-            </button>
-            <button className="header-btn" onClick={() => setCompareOpen(true)} title="Compare process metrics">
-              Compare
-            </button>
-            <button className="header-btn" onClick={() => setConfigOpen(true)} title="Edit configuration">
-              Config
-            </button>
-            <button
-              className="theme-toggle"
-              onClick={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
-              title="Toggle theme"
-            >
-              {theme === 'light' ? '🌙' : '☀️'}
-            </button>
+            <div className="header-group">
+              <button className="header-btn header-btn-start" onClick={handleStartAll} title="Start all processes">
+                Start All
+              </button>
+              <button className="header-btn header-btn-stop" onClick={handleStopAll} title="Stop all processes">
+                Stop All
+              </button>
+            </div>
+            <div className="header-sep" />
+            <div className="header-group">
+              <button className="header-btn" onClick={() => setLogViewerOpen(true)} title="View process logs">
+                Logs
+              </button>
+              <button className="header-btn" onClick={() => setCompareOpen(true)} title="Compare process metrics">
+                Compare
+              </button>
+            </div>
+            <div className="header-sep" />
+            <div className="header-group">
+              <button className="header-btn" onClick={() => setConfigOpen(true)} title="Edit configuration">
+                Config
+              </button>
+              <button
+                className="theme-toggle"
+                onClick={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
+                title="Toggle theme"
+              >
+                {theme === 'light' ? '🌙' : '☀️'}
+              </button>
+            </div>
           </div>
           <div className={`ws-badge ${connected ? 'ws-connected' : 'ws-disconnected'}`}>
             <span className="ws-dot" />
@@ -210,6 +223,7 @@ export default function App() {
 
       <EventTimeline />
 
+      {logViewerOpen && <LogViewer processes={processes} onClose={() => setLogViewerOpen(false)} />}
       {configOpen && <ConfigEditor onClose={() => setConfigOpen(false)} />}
       {compareOpen && (
         <ComparisonView
