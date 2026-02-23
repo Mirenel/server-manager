@@ -16,41 +16,44 @@ import (
 type ProcessState string
 
 const (
-	StateRunning ProcessState = "running"
-	StateStopped ProcessState = "stopped"
-	StateCrashed ProcessState = "crashed"
+	StateRunning  ProcessState = "running"
+	StateStopped  ProcessState = "stopped"
+	StateCrashed  ProcessState = "crashed"
+	StateStopping ProcessState = "stopping"
 )
 
 type ManagedProcess struct {
-	Config       ProcessConfig
-	State        ProcessState
-	PID          int32
-	CPU          float64
-	MemoryRSS    uint64
-	Threads      int32
-	StartedAt    time.Time
-	RestartCount int
-	cmd          *exec.Cmd
-	mu           sync.Mutex
-	manualStop   bool
-	metrics      *MetricsRingBuffer
+	Config           ProcessConfig
+	State            ProcessState
+	PID              int32
+	CPU              float64
+	MemoryRSS        uint64
+	Threads          int32
+	StartedAt        time.Time
+	RestartCount     int
+	StoppingDeadline time.Time // when force kill will happen (zero if not stopping)
+	cmd              *exec.Cmd
+	mu               sync.Mutex
+	manualStop       bool
+	metrics          *MetricsRingBuffer
 }
 
 type ProcessStatus struct {
-	ID           string       `json:"id"`
-	Name         string       `json:"name"`
-	State        ProcessState `json:"state"`
-	PID          int32        `json:"pid"`
-	CPU          float64      `json:"cpu"`
-	MemoryMB     float64      `json:"memory_mb"`
-	Threads      int32        `json:"threads"`
-	StartedAt    int64        `json:"started_at"` // unix ms, 0 if not running
-	RestartCount int          `json:"restart_count"`
-	AutoRestart  bool         `json:"auto_restart"`
-	Executable   string       `json:"executable"`
-	WorkingDir   string       `json:"working_dir"`
-	IsService    bool         `json:"is_service"`
-	Category     string       `json:"category"`
+	ID               string       `json:"id"`
+	Name             string       `json:"name"`
+	State            ProcessState `json:"state"`
+	PID              int32        `json:"pid"`
+	CPU              float64      `json:"cpu"`
+	MemoryMB         float64      `json:"memory_mb"`
+	Threads          int32        `json:"threads"`
+	StartedAt        int64        `json:"started_at"`        // unix ms, 0 if not running
+	StoppingDeadline int64        `json:"stopping_deadline"` // unix ms, 0 if not stopping
+	RestartCount     int          `json:"restart_count"`
+	AutoRestart      bool         `json:"auto_restart"`
+	Executable       string       `json:"executable"`
+	WorkingDir       string       `json:"working_dir"`
+	IsService        bool         `json:"is_service"`
+	Category         string       `json:"category"`
 }
 
 type ProcessManager struct {
@@ -98,7 +101,9 @@ func queryServiceStatus(serviceName string) (state ProcessState, pid int32, err 
 	}
 	output := string(out)
 
-	if strings.Contains(output, "RUNNING") {
+	if strings.Contains(output, "STOP_PENDING") {
+		state = StateStopping
+	} else if strings.Contains(output, "RUNNING") {
 		state = StateRunning
 	} else {
 		state = StateStopped
@@ -122,9 +127,15 @@ func queryServiceStatus(serviceName string) (state ProcessState, pid int32, err 
 
 func (pm *ProcessManager) startServiceProcess(mp *ManagedProcess) error {
 	mp.mu.Lock()
-	defer mp.mu.Unlock()
+	if mp.State == StateRunning {
+		mp.mu.Unlock()
+		return nil
+	}
+	serviceName := mp.Config.ServiceName
+	mp.mu.Unlock()
 
-	out, err := exec.Command("net", "start", mp.Config.ServiceName).CombinedOutput()
+	// Run net start without holding the lock — monitor loop will detect RUNNING state
+	out, err := exec.Command("net", "start", serviceName).CombinedOutput()
 	if err != nil {
 		msg := strings.TrimSpace(string(out))
 		if strings.Contains(msg, "already been started") {
@@ -139,14 +150,34 @@ func (pm *ProcessManager) startServiceProcess(mp *ManagedProcess) error {
 
 func (pm *ProcessManager) stopServiceProcess(mp *ManagedProcess) error {
 	mp.mu.Lock()
-	defer mp.mu.Unlock()
+	if mp.State != StateRunning {
+		mp.mu.Unlock()
+		return nil
+	}
+	mp.State = StateStopping
+	serviceName := mp.Config.ServiceName
+	mp.mu.Unlock()
 
-	out, err := exec.Command("net", "stop", mp.Config.ServiceName).CombinedOutput()
+	// Run net stop without holding the lock — monitor loop will detect STOPPED state
+	out, err := exec.Command("net", "stop", serviceName).CombinedOutput()
 	if err != nil {
 		msg := strings.TrimSpace(string(out))
 		if strings.Contains(msg, "not started") {
+			mp.mu.Lock()
+			mp.State = StateStopped
+			mp.mu.Unlock()
 			return nil
 		}
+		// net stop can fail/timeout even when the service is still shutting down.
+		// Query actual state instead of blindly reverting to StateRunning.
+		actualState, _, scErr := queryServiceStatus(serviceName)
+		mp.mu.Lock()
+		if scErr == nil {
+			mp.State = actualState // could be StateStopping, StateStopped, or StateRunning
+		} else {
+			mp.State = StateRunning // can't determine, revert
+		}
+		mp.mu.Unlock()
 		return fmt.Errorf("%w: %s", err, msg)
 	}
 	pm.events.Record(mp.Config.ID, mp.Config.Name, EventStopped)
@@ -241,6 +272,7 @@ func (pm *ProcessManager) startExecProcess(mp *ManagedProcess, manualStart bool)
 		mp.MemoryRSS = 0
 		mp.Threads = 0
 		mp.StartedAt = time.Time{}
+		mp.StoppingDeadline = time.Time{}
 		shouldRestart := !wasManual && mp.Config.AutoRestart
 		mp.mu.Unlock()
 
@@ -276,6 +308,12 @@ func (pm *ProcessManager) stopExecProcess(mp *ManagedProcess) error {
 	pid := mp.PID
 	proc := mp.cmd.Process
 	delay := mp.Config.ShutdownDelay
+
+	// Set stopping state so frontend shows countdown
+	mp.State = StateStopping
+	if delay > 0 {
+		mp.StoppingDeadline = time.Now().Add(time.Duration(delay) * time.Second)
+	}
 	mp.mu.Unlock()
 
 	// If no delay, kill immediately
@@ -344,18 +382,30 @@ func (pm *ProcessManager) monitor() {
 				// Services: poll sc queryex each tick for live state + PID
 				state, pid, err := queryServiceStatus(mp.Config.ServiceName)
 				if err == nil {
-					mp.State = state
-					mp.PID = pid
+					if mp.State == StateStopping {
+						// Respect stopping state: only transition when fully stopped
+						if state == StateStopped {
+							mp.State = StateStopped
+							mp.PID = 0
+							pm.events.Record(mp.Config.ID, mp.Config.Name, EventStopped)
+						} else {
+							// STOP_PENDING or still RUNNING during shutdown — keep stopping
+							mp.PID = pid
+						}
+					} else {
+						mp.State = state
+						mp.PID = pid
+					}
 				}
-				if mp.State != StateRunning {
+				if mp.State != StateRunning && mp.State != StateStopping {
 					mp.CPU = 0
 					mp.MemoryRSS = 0
 					mp.Threads = 0
 				}
 			}
 
-			// CPU / memory / threads / net via gopsutil
-			if mp.State == StateRunning && mp.PID > 0 {
+			// CPU / memory / threads via gopsutil (also during stopping — process is still alive)
+			if (mp.State == StateRunning || mp.State == StateStopping) && mp.PID > 0 {
 				p, err := process.NewProcess(mp.PID)
 				if err == nil {
 					cpu, _ := p.CPUPercent()
@@ -387,20 +437,25 @@ func (pm *ProcessManager) getStatus(mp *ManagedProcess) ProcessStatus {
 	if !mp.StartedAt.IsZero() {
 		startedAt = mp.StartedAt.UnixMilli()
 	}
+	var stoppingDeadline int64
+	if !mp.StoppingDeadline.IsZero() {
+		stoppingDeadline = mp.StoppingDeadline.UnixMilli()
+	}
 	return ProcessStatus{
-		ID:           mp.Config.ID,
-		Name:         mp.Config.Name,
-		State:        mp.State,
-		PID:          mp.PID,
-		CPU:          mp.CPU,
-		MemoryMB:     float64(mp.MemoryRSS) / 1024 / 1024,
-		Threads:      mp.Threads,
-		StartedAt:    startedAt,
-		RestartCount: mp.RestartCount,
-		AutoRestart:  mp.Config.AutoRestart,
-		Executable:   mp.Config.Executable,
-		WorkingDir:   mp.Config.WorkingDir,
-		IsService:    mp.Config.IsService,
-		Category:     mp.Config.Category,
+		ID:               mp.Config.ID,
+		Name:             mp.Config.Name,
+		State:            mp.State,
+		PID:              mp.PID,
+		CPU:              mp.CPU,
+		MemoryMB:         float64(mp.MemoryRSS) / 1024 / 1024,
+		Threads:          mp.Threads,
+		StartedAt:        startedAt,
+		StoppingDeadline: stoppingDeadline,
+		RestartCount:     mp.RestartCount,
+		AutoRestart:      mp.Config.AutoRestart,
+		Executable:       mp.Config.Executable,
+		WorkingDir:       mp.Config.WorkingDir,
+		IsService:        mp.Config.IsService,
+		Category:         mp.Config.Category,
 	}
 }

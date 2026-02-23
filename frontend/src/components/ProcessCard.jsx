@@ -51,13 +51,15 @@ function MemSparkline({ history }) {
 export default function ProcessCard({ process, onStart, onStop, onToggleAutoRestart, cpuHistory, memHistory }) {
   const {
     id, name, state, pid, cpu, memory_mb, threads,
-    started_at, restart_count,
+    started_at, restart_count, stopping_deadline,
     auto_restart, executable, working_dir, is_service,
   } = process
 
   const isRunning = state === 'running'
   const isCrashed = state === 'crashed'
   const isStopped = state === 'stopped'
+  const isStopping = state === 'stopping'
+  const isAlive = isRunning || isStopping
 
   const cpuClamped = Math.min(cpu, 100)
   const memDisplay = memory_mb >= 1024
@@ -65,6 +67,26 @@ export default function ProcessCard({ process, onStart, onStop, onToggleAutoRest
     : `${memory_mb.toFixed(0)} MB`
 
   const uptime = isRunning && started_at ? formatUptime(Date.now() - started_at) : null
+
+  // Countdown timer for graceful shutdown
+  const [countdownText, setCountdownText] = useState(null)
+  useEffect(() => {
+    if (!isStopping || !stopping_deadline || stopping_deadline === 0) {
+      setCountdownText(null)
+      return
+    }
+    const update = () => {
+      const remaining = Math.max(0, Math.ceil((stopping_deadline - Date.now()) / 1000))
+      if (remaining > 0) {
+        setCountdownText(`Force kill in ${remaining}s`)
+      } else {
+        setCountdownText(null)
+      }
+    }
+    update()
+    const interval = setInterval(update, 100)
+    return () => clearInterval(interval)
+  }, [isStopping, stopping_deadline])
 
   const [logOpen, setLogOpen] = useState(false)
   const [logLines, setLogLines] = useState([])
@@ -130,8 +152,8 @@ export default function ProcessCard({ process, onStart, onStop, onToggleAutoRest
         </div>
         <div className="card-meta">
           <span className="meta-label">PID</span>
-          <span className="meta-value">{isRunning ? pid : '—'}</span>
-          {isRunning && threads > 0 && (
+          <span className="meta-value">{isAlive ? pid : '—'}</span>
+          {isAlive && threads > 0 && (
             <>
               <span className="meta-sep">·</span>
               <span className="meta-label">THR</span>
@@ -148,7 +170,7 @@ export default function ProcessCard({ process, onStart, onStop, onToggleAutoRest
         </div>
       </div>
 
-      {isRunning && (
+      {isAlive && (
         <div className="stats">
           <div className="stat-row">
             <span className="stat-label">CPU</span>
@@ -173,7 +195,14 @@ export default function ProcessCard({ process, onStart, onStop, onToggleAutoRest
         </div>
       )}
 
-      {isRunning && (
+      {isStopping && countdownText && (
+        <div className="shutdown-countdown">{countdownText}</div>
+      )}
+      {isStopping && !countdownText && (
+        <div className="shutdown-countdown">Stopping...</div>
+      )}
+
+      {isAlive && (
         <div className="sparklines">
           <div className="sparkline-row">
             <span className="sparkline-label">CPU</span>
@@ -228,7 +257,7 @@ export default function ProcessCard({ process, onStart, onStop, onToggleAutoRest
         </div>
       )}
 
-      {!is_service && isRunning && (
+      {!is_service && isAlive && (
         <div className="log-panel">
           <button className="log-toggle" onClick={() => setMetricsOpen(!metricsOpen)}>
             <span className="log-caret">{metricsOpen ? '▾' : '▸'}</span>
@@ -261,6 +290,9 @@ export default function ProcessCard({ process, onStart, onStop, onToggleAutoRest
           )}
           {isRunning && (
             <button className="btn btn-stop" onClick={onStop}>Stop</button>
+          )}
+          {isStopping && (
+            <button className="btn btn-stop" disabled>Stopping</button>
           )}
         </div>
       </div>

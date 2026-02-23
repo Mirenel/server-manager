@@ -122,6 +122,7 @@ body {
 
 .process-card.running { border-color: #1f4f2a; }
 .process-card.crashed { border-color: #4f1f1e; }
+.process-card.stopping { border-color: #4f3d1e; }
 
 /* Card header */
 .card-header {
@@ -146,8 +147,14 @@ body {
 .dot-running { background: var(--green); box-shadow: 0 0 7px var(--green); }
 .dot-stopped { background: var(--text-muted); }
 .dot-crashed { background: var(--red); box-shadow: 0 0 7px var(--red); animation: pulse-red 1.5s infinite; }
+.dot-stopping { background: var(--yellow); box-shadow: 0 0 7px var(--yellow); animation: pulse-yellow 1.5s infinite; }
 
 @keyframes pulse-red {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes pulse-yellow {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
 }
@@ -170,6 +177,7 @@ body {
 .badge-running { background: var(--green-dim); color: var(--green); }
 .badge-stopped { background: var(--surface2); color: var(--text-muted); }
 .badge-crashed { background: var(--red-dim); color: var(--red); }
+.badge-stopping { background: var(--yellow-dim); color: var(--yellow); }
 
 .card-meta {
   display: flex;
@@ -367,6 +375,14 @@ body {
   color: var(--red);
 }
 
+.btn-stop:disabled {
+  background: var(--yellow-dim);
+  border-color: var(--yellow);
+  color: var(--yellow);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
 /* ── Header stats ────────────────────────────────────────────────────────── */
 .header-stats {
   display: flex;
@@ -445,6 +461,15 @@ body {
   border-radius: 20px;
   padding: 1px 6px;
   letter-spacing: 0.3px;
+}
+
+/* ── Shutdown countdown ──────────────────────────────────────────────────── */
+.shutdown-countdown {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--yellow);
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  padding: 4px 0;
 }
 
 /* ── Net I/O ─────────────────────────────────────────────────────────────── */
