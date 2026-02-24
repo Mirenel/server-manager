@@ -204,5 +204,3 @@ You are free to:
 You must:
 - ✓ Include a copy of the license
 - ✓ Credit the original author
-
-**Copyright (c) 2026 Mirenel**
